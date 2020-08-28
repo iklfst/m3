@@ -9,6 +9,8 @@ title = "M3DB Documentation"
 metaDataFormat = "yaml"
 defaultContentLanguageInSubdir= true
 
+staticDir = ["static"]
+
 # Highlighting config.
 pygmentsCodeFences = true
 pygmentsUseClasses = false
