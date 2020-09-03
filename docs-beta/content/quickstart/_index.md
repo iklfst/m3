@@ -258,7 +258,6 @@ Once all the shards have the `AVAILABLE` state, the node has finished bootstrapp
 [Read more about the bootstrapping process](https://docs.m3db.io/operational_guide/bootstrapping_crash_recovery/).
 {{% /notice %}}
 
-
 ```shell
 {"level":"info","ts":1598367624.0117292,"msg":"bootstrap marking all shards as bootstrapped","namespace":"default","namespace":"default","numShards":64}
 {"level":"info","ts":1598367624.0301404,"msg":"bootstrap index with bootstrapped index segments","namespace":"default","numIndexBlocks":0}
@@ -270,8 +269,8 @@ Once all the shards have the `AVAILABLE` state, the node has finished bootstrapp
 
 M3DB supports two query engines:
 
-- **Prometheus (default)** - robust and commonly-used query language for metrics
-- **M3 Query Engine** - higher-performance query engine but doesn't support all the functions yet
+-   **Prometheus (default)** - robust and commonly-used query language for metrics
+-   **M3 Query Engine** - higher-performance query engine but doesn't support all the functions yet
 
 <!-- TODO: more detail -->
 
@@ -281,14 +280,22 @@ As M3DB is a time series database (TSDB), metric data consists of a value, a tim
 
 Use the _/writetagged_ endpoint to write a tagged metric to M3DB with the following data in the request body, all fields are required:
 
-- `namespace`: The namespace to write to
-- `id`: A non-unique id for the metric
-- `tags`: An array of at least one `name`/`value` pairs
-- `datapoint`: An object containing the time series data
-  - `timestamp`: The UNIX timestap for the data
-  - `value`: The value for the data, can be of any type
+-   `namespace`: The namespace to write to
+-   `id`: A non-unique id for the metric
+-   `tags`: An array of at least one `name`/`value` pairs
+-   `datapoint`: An object containing the time series data
+    -   `timestamp`: The UNIX timestap for the data
+    -   `value`: The value for the data, can be of any type
 
 <!-- TODO: Check the above is true -->
+
+{{% notice tip %}}
+Label names may contain ASCII letters, numbers, underscores, and unicode characters. They must match the regex `[a-zA-Z_][a-zA-Z0-9_]*`. Label names beginning with `__` are reserved for internal use. [Read more in the Prometheus documentation](https://prometheus.io/docs/concepts/data_model/#metric-names-and-labels).
+{{% /notice %}}
+
+{{% notice tip %}}
+The examples below use `__name__` as the name for one of the tags, which is a Prometheus reserved tag that allows you to query metrics using the value of the tag to filter results.
+{{% /notice %}}
 
 {{< tabs name="write_metrics" >}}
 {{< tab name="Command 1" >}}
@@ -310,67 +317,163 @@ Use the _/writetagged_ endpoint to write a tagged metric to M3DB with the follow
 
 ### Querying metrics
 
-You can query metrics data
-The metrics above used the `__name__` tag, which is a Prometheus reserved tag
+For example, the following query uses a regex pattern to find all `city` fields that match `new_york`.
 
+As this guide uses Prometheus as the query engine, you have access to [all the features of PromQL queries](https://prometheus.io/docs/prometheus/latest/querying/basics/). Below are some examples using the metrics written above.
 
-<!-- **Note:** In the above example we include the tag `__name__`. This is because `__name__` is a
-reserved tag in Prometheus and will make querying the metric much easier. For example, if you have
-[M3Query](query.md) setup as a Prometheus datasource in Grafana, you can then query for the metric
-using the following PromQL query: -->
+<!-- TODO: Fix dates -->
 
-You can use standard PromQL to query metrics date. For example, to
+<!-- TODO: Fix ports -->
 
-{{< tabs name="example_promql" >}}
+#### Using regular expression to match tag values
+
+{{< tabs name="example_promql_regex" >}}
 {{% tab name="Command" %}}
 
 ```shell
-
+curl -X "POST" "http://localhost:9003/query" \
+     -H 'Content-Type: application/json; charset=utf-8' \
+     -d $'{
+  "namespace": "default",
+  "rangeStart": 0,
+  "rangeEnd": 1599048815,
+  "query": {
+    "regexp": {
+      "field": "city",
+      "regexp": "new_.*"
+    }
+  }
+}' | jq .
 ```
 
 {{% /tab %}}
 {{% tab name="Output" %}}
 
 ```json
+{
+  "results": [
+    {
+      "id": "sales_total",
+      "tags": [
+        {
+          "name": "__name__",
+          "value": "third_avenue"
+        },
+        {
+          "name": "city",
+          "value": "new_york"
+        },
+        {
+          "name": "checkout",
+          "value": "1"
+        }
+      ],
+      "datapoints": [
+        {
+          "timestamp": 1599048770,
+          "value": 5327.65
+        },
+        {
+          "timestamp": 1599048773,
+          "value": 7327.65
+        },
+        {
+          "timestamp": 1599048776,
+          "value": 3327.65
+        }
+      ]
+    }
+  ],
+  "exhaustive": true
+}
+```
+
+{{% /tab %}}
+{{< /tabs >}}
+
+#### Tag equal to a certain value
+
+{{< tabs name="example_promql_value" >}}
+{{% tab name="Command" %}}
+
+The query uses the named metric.
+
+{{% notice tip %}}
+You need to encode the query below.
+{{% /notice %}}
+
+```shell
+curl -X "POST" "http://localhost:7201/api/v1/query_range?
+  query=third_avenue:{checkout='1'}
+  &start=1599044410
+  &end=1599049635
+  &step=1s"
+```
+
+{{% /tab %}}
+{{% tab name="Output" %}}
+
+<!-- TODO: This should work? -->
+```json
+TBD
 
 ```
 
 {{% /tab %}}
 {{< /tabs >}}
 
-To…
+#### Values above a certain number
 
-{{< tabs name="example_promql" >}}
+{{< tabs name="example_promql_range" >}}
 {{% tab name="Command" %}}
 
-```shell
+The query uses the named metric.
 
+{{% notice tip %}}
+You need to encode the query below.
+{{% /notice %}}
+
+```shell
+curl -X "POST" "http://localhost:7201/api/v1/query_range?
+  query=third_avenue > 6000
+  &start=1599044410
+  &end=1599050801
+  &step=1s"
 ```
 
 {{% /tab %}}
 {{% tab name="Output" %}}
 
 ```json
-
-```
-
-{{% /tab %}}
-{{< /tabs >}}
-
-To…
-
-{{< tabs name="example_promql" >}}
-{{% tab name="Command" %}}
-
-```shell
-
-```
-
-{{% /tab %}}
-{{% tab name="Output" %}}
-
-```json
-
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {
+          "__name__": "third_avenue",
+          "checkout": "1",
+          "city": "new_york"
+        },
+        "values": [
+          [
+            1599048773,
+            "7327.65"
+          ],
+          [
+            1599048774,
+            "7327.65"
+          ],
+          [
+            1599048775,
+            "7327.65"
+          ]
+        ]
+      }
+    ]
+  }
+}
 ```
 
 {{% /tab %}}
@@ -380,5 +483,5 @@ To…
 
 This quickstart covered getting a single-node M3DB cluster running, and writing and querying metrics to the cluster. Some next steps are:
 
-- one
-- two
+-   one
+-   two

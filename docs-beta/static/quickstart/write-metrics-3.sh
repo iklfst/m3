@@ -1,10 +1,11 @@
+#!/bin/bash
 curl -X POST http://localhost:9003/writetagged -d '{
   "namespace": "default",
   "id": "sales_total",
   "tags": [
     {
       "name": "__name__",
-      "value": "3rd_avenue"
+      "value": "third_avenue"
     },
     {
       "name": "city",
